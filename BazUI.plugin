@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<Plugin>
+	<Information>
+		<Name>BazUI</Name>
+		<Author>Baz4k</Author>
+		<Version>007</Version>
+		<Description>BazUI by Baz4k: your whole interface as one plugin, a module per part - bags, action bars, the menu, unit frames, a class bar and an XP bar - with a skin that restyles the game's own windows to match. Switch off any part you don't want in /bazui.</Description>
+	</Information>
+	<Package>Baz4k.BazUI.Main</Package>
+	<Configuration Apartment="BazUI" />
+</Plugin>
