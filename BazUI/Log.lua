@@ -52,6 +52,11 @@ local DUMPS = {
 	"Turbine.UI.Lotro.Shortcut",
 	"Turbine.UI.Lotro.EntityControl",
 	"Turbine.UI",
+	-- for scaling: the group names, and what Display offers
+	"Turbine.UI.Lotro.UIScalingGroupType",
+	"Turbine.UI.Display",
+	-- for tinting art (the accent colour)
+	"Turbine.UI.BlendMode",
 	"Turbine.Gameplay",
 	"Turbine.Gameplay.LocalPlayer",
 	-- for the XP bar: where level and experience live, and the chat it can read

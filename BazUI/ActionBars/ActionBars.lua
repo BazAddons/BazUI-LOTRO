@@ -26,7 +26,11 @@ local GAME_SLOTS = 12;     -- per game bar
 local SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 200, 5;   -- percent of the UI scale
 local FLASH_TIME = 0.15;   -- seconds
 local FRAME_ART = "Baz4k/BazUI/ActionBars/Art/frame.tga";
-local FRAME_PX = 2 * SLOT; -- the frame art is twice the slot size, shrunk to it so it stays sharp
+-- The backdrop and flash are the frame's rounded square filled (make_slot_art.py),
+-- so their corners stay inside its ring.
+local BACKDROP_ART = "Baz4k/BazUI/ActionBars/Art/backdrop.tga";
+local FLASH_ART = "Baz4k/BazUI/ActionBars/Art/flash.tga";
+local FRAME_PX = 2 * SLOT; -- the slot art is twice the slot size, shrunk to it so it stays sharp
 local DATA_KEY = "BazUI_ActionBars";
 
 -- Slots on bars made in BazUI are saved under numbers well clear of the
@@ -51,8 +55,6 @@ for stackIndex, def in ipairs(BARS) do
 end
 
 -- Colors are alpha, r, g, b.
-local BACKDROP_COLOR = Turbine.UI.Color(0.45, 0.12, 0.11, 0.10);
-local FLASH_COLOR = Turbine.UI.Color(0.40, 1, 1, 1);
 local KEY_COLOR = Turbine.UI.Color(1, 0.88, 0.86, 0.80);
 
 local settings;
@@ -254,17 +256,41 @@ local function Restore(number)
 	return ok and not IsEmpty(cell.slot:GetShortcut());
 end
 
+-- A piece of slot art, part of the slot so it layers with the bar (under the
+-- game's windows). The art is twice the slot's size: set at that size, then
+-- stretched down to the slot.
+local function SlotArt(cell, art, zOrder)
+	local control = Turbine.UI.Control();
+	control:SetParent(cell);
+	control:SetBackground(art);
+	control:SetBlendMode(Turbine.UI.BlendMode.AlphaBlend);
+	control:SetSize(FRAME_PX, FRAME_PX);
+	control:SetStretchMode(1);
+	control:SetSize(SLOT, SLOT);
+	-- Stretched controls need their edges pinned to scale with the UI.
+	pcall(function()
+		local Same = Turbine.UI.EdgeAttachmentType.Same;
+		control:AttachEdges(Same, Same, Same, Same);
+	end);
+	control:SetZOrder(zOrder);
+	control:SetMouseVisible(false);
+	return control;
+end
+
 local function CreateCell(bar, index)
 	local cell = Turbine.UI.Control();
 	cell:SetParent(bar.window);
 	cell:SetSize(SLOT, SLOT);
-	cell:SetBackColor(BACKDROP_COLOR);
 	cell.bar = bar;
 	cell.number = bar.def.first + index - 1;
+
+	-- Under the skill.
+	cell.backdrop = SlotArt(cell, BACKDROP_ART, 0);
 
 	local slot = Turbine.UI.Lotro.Quickslot();
 	slot:SetParent(cell);
 	slot:SetSize(SLOT, SLOT);
+	slot:SetZOrder(1);
 	slot:SetAllowDrop(AcceptsDrops());
 	slot:SetUseOnRightClick(false); -- right-click is for Shift+right-click to clear
 	slot.ShortcutChanged = BazUI.Guard("bars ShortcutChanged", function(sender, args)
@@ -303,33 +329,12 @@ local function CreateCell(bar, index)
 		label:SetMouseVisible(false);
 	end
 
-	local flash = Turbine.UI.Control();
-	flash:SetParent(cell);
-	flash:SetSize(SLOT, SLOT);
-	flash:SetBackColor(FLASH_COLOR);
-	flash:SetZOrder(10);
-	flash:SetMouseVisible(false);
-	flash:SetVisible(false);
-	cell.flash = flash;
+	cell.flash = SlotArt(cell, FLASH_ART, 10);
+	cell.flash:SetVisible(false);
 
-	-- The frame: part of the slot, so it layers with the bar (under the
-	-- game's windows, over the skill). Its art is twice the slot's size:
-	-- set at that size, then stretched down to the slot.
-	local frame = Turbine.UI.Control();
-	frame:SetParent(cell);
-	frame:SetBackground(FRAME_ART);
-	frame:SetBlendMode(Turbine.UI.BlendMode.AlphaBlend);
-	frame:SetSize(FRAME_PX, FRAME_PX);
-	frame:SetStretchMode(1);
-	frame:SetSize(SLOT, SLOT);
-	-- Stretched controls need their edges pinned to scale with the UI.
-	pcall(function()
-		local Same = Turbine.UI.EdgeAttachmentType.Same;
-		frame:AttachEdges(Same, Same, Same, Same);
-	end);
-	frame:SetZOrder(4);
-	frame:SetMouseVisible(false);
-	cell.frame = frame;
+	-- The frame, over the skill; grey with the accent.
+	cell.frame = SlotArt(cell, FRAME_ART, 4);
+	BazUI.Accent.Image(cell.frame);
 
 	cellsByNumber[cell.number] = cell;
 	-- A slot made after the saved ones were put back (the bar grew) gets its own.

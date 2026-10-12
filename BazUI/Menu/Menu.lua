@@ -124,6 +124,7 @@ local function Create()
 		control:SetSize(ICON_PX, ICON_PX);
 		control:SetBlendMode(Turbine.UI.BlendMode.AlphaBlend);
 		control:SetMouseVisible(false);
+		BazUI.Accent.Image(control);
 		icons[slot] = { control = control };
 		ShowIcon(slot, false);
 
@@ -170,7 +171,7 @@ local function CreatePlaceholder()
 	label:SetParent(placeholder);
 	label:SetSize(placeholder:GetWidth(), placeholder:GetHeight());
 	label:SetFont(Turbine.UI.Lotro.Font.TrajanPro14);
-	label:SetForeColor(Turbine.UI.Color(1, 0.95, 0.85, 0.55));
+	BazUI.Accent.Bind(label, "SetForeColor", { 1, 0.95, 0.85, 0.55 });
 	label:SetTextAlignment(Turbine.UI.ContentAlignment.MiddleCenter);
 	label:SetText("Menu");
 	label:SetMouseVisible(false);

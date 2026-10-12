@@ -15,6 +15,7 @@ BazUI.Log.Write("---- v" .. BazUI.Version .. " loading");
 import "Baz4k.BazUI.Util";
 import "Baz4k.BazUI.Settings";
 import "Baz4k.BazUI.Scaling";
+import "Baz4k.BazUI.Accent";
 import "Baz4k.BazUI.Events";
 import "Baz4k.BazUI.Layout";
 import "Baz4k.BazUI.Grid";
@@ -121,7 +122,18 @@ function command:Execute(cmd, args)
 	elseif verb == "xp" then
 		BazUI.XP.Report();
 	elseif verb == "scale" then
-		BazUI.Scaling.Report(BazUI.Bags.GetWindow());
+		local value = tonumber(words[2] or "");
+		if value ~= nil and value >= 0.5 and value <= 4 then
+			BazUI.Scaling.SetOverride(value);
+			Turbine.Shell.WriteLine("BazUI scale set to " .. value .. " (/bazui scale auto follows the game again)");
+		elseif words[2] == "auto" then
+			BazUI.Scaling.SetOverride(nil);
+			Turbine.Shell.WriteLine("BazUI scale follows the game's Global UI scale");
+		elseif words[2] ~= nil then
+			Turbine.Shell.WriteLine("BazUI: /bazui scale takes a number from 0.5 to 4, or auto");
+		else
+			BazUI.Scaling.Report(BazUI.Bags.GetWindow());
+		end
 	elseif verb == "dump" then
 		BazUI.Log.DumpApi();
 	elseif verb == "debug" then
@@ -144,6 +156,7 @@ function command:GetHelp()
 		"/bazui xp - print your level and XP (the bar itself moves in layout mode, Ctrl+\\)\n" ..
 		"/bazui grid - show or hide the alignment grid (it also shows in layout mode)\n" ..
 		"/bazui scale - print the UI scale values BazUI sees\n" ..
+		"/bazui scale 2 - draw BazUI at that scale whatever the game reports; /bazui scale auto to follow the game\n" ..
 		"/bazui debug - log what the game reports, for troubleshooting\n" ..
 		"/bazui dump - write the game's API names to the log, for development";
 end

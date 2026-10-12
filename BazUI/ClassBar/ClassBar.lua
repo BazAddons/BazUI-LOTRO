@@ -24,13 +24,13 @@ local DOCK_GAP = 3;             -- between the docked bar and the frame under it
 
 -- Colors are alpha, r, g, b.
 local BACK_COLOR = Turbine.UI.Color(0.80, 0.05, 0.04, 0.03);
-local BORDER_COLOR = Turbine.UI.Color(0.90, 0.69, 0.55, 0.28);   -- the menu's gold
+local BORDER_GOLD = { 0.90, 0.69, 0.55, 0.28 };   -- the menu's gold, through BazUI.Accent
 local PIP_OFF_COLOR = Turbine.UI.Color(0.90, 0.27, 0.23, 0.18);
 local BATTLE_COLOR = Turbine.UI.Color(1, 0.82, 0.24, 0.16);
 local HEAL_COLOR = Turbine.UI.Color(1, 0.26, 0.68, 0.30);
 local CENTER_COLOR = Turbine.UI.Color(1, 0.69, 0.55, 0.28);
 local CHARGED_COLOR = Turbine.UI.Color(1, 1.00, 0.86, 0.45);
-local TEXT_COLOR = Turbine.UI.Color(1, 0.93, 0.86, 0.62);
+local TEXT_GOLD = { 1, 0.93, 0.86, 0.62 };
 
 local settings, player, attributes, window, label, center;
 local pips = { battle = {}, heal = {} };
@@ -116,7 +116,12 @@ local function Layout()
 	window.back:SetHeight(Height() - 2);
 
 	-- The panel - dark, gold border - is optional; without it, just the pips.
-	window:SetBackColor(settings.Panel and BORDER_COLOR or Turbine.UI.Color(0, 0, 0, 0));
+	if settings.Panel then
+		BazUI.Accent.Bind(window, "SetBackColor", BORDER_GOLD);
+	else
+		BazUI.Accent.Unbind(window, "SetBackColor");
+		window:SetBackColor(Turbine.UI.Color(0, 0, 0, 0));
+	end
 	window.back:SetVisible(settings.Panel);
 
 	-- Docked it takes the frame's width and the pips stretch to fill it.
@@ -195,7 +200,7 @@ local function Create()
 
 	window = Turbine.UI.Window();
 	window:SetWidth(ROW_W + 2 * PAD);
-	window:SetBackColor(BORDER_COLOR);
+	BazUI.Accent.Bind(window, "SetBackColor", BORDER_GOLD);
 
 	local back = Turbine.UI.Control();
 	back:SetParent(window);
@@ -210,7 +215,7 @@ local function Create()
 	label:SetPosition(PAD, PAD - 2);
 	label:SetSize(ROW_W, LABEL_H);
 	label:SetFont(Turbine.UI.Lotro.Font.Verdana12);
-	label:SetForeColor(TEXT_COLOR);
+	BazUI.Accent.Bind(label, "SetForeColor", TEXT_GOLD);
 	label:SetTextAlignment(Turbine.UI.ContentAlignment.MiddleCenter);
 	label:SetMouseVisible(false);
 

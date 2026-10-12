@@ -20,15 +20,15 @@ local POWER_H = 10;
 local BAR_GAP = 3;
 local HEIGHT = PAD + NAME_H + MORALE_H + BAR_GAP + POWER_H + PAD;
 
--- Colors are alpha, r, g, b.
+-- Colors are alpha, r, g, b; golds are tables, shown through BazUI.Accent.
 local BACK_COLOR = Turbine.UI.Color(0.80, 0.05, 0.04, 0.03);
-local BORDER_COLOR = Turbine.UI.Color(0.90, 0.69, 0.55, 0.28);   -- the menu's gold
+local BORDER_GOLD = { 0.90, 0.69, 0.55, 0.28 };   -- the menu's gold
 local TRACK_COLOR = Turbine.UI.Color(0.90, 0.13, 0.11, 0.09);
 local MORALE_COLOR = Turbine.UI.Color(1, 0.22, 0.62, 0.22);
 local MORALE_LOW_COLOR = Turbine.UI.Color(1, 0.78, 0.20, 0.16);  -- under a third
 local POWER_COLOR = Turbine.UI.Color(1, 0.22, 0.42, 0.80);
 local TEMP_COLOR = Turbine.UI.Color(0.85, 0.95, 0.80, 0.30);     -- temporary morale, on top
-local NAME_COLOR = Turbine.UI.Color(1, 0.93, 0.86, 0.62);
+local NAME_GOLD = { 1, 0.93, 0.86, 0.62 };
 local TEXT_COLOR = Turbine.UI.Color(1, 0.95, 0.95, 0.92);
 
 local settings, player;
@@ -216,7 +216,7 @@ local function CreateFrame(key)
 	local frame = { key = key };
 	local w = Turbine.UI.Window();
 	w:SetSize(WIDTH, HEIGHT);
-	w:SetBackColor(BORDER_COLOR);
+	BazUI.Accent.Bind(w, "SetBackColor", BORDER_GOLD);
 	frame.window = w;
 
 	-- A 1-unit gold border round a dark panel.
@@ -232,7 +232,7 @@ local function CreateFrame(key)
 	frame.name:SetPosition(PAD, PAD - 2);
 	frame.name:SetSize(WIDTH - 2 * PAD - 30, NAME_H);
 	frame.name:SetFont(Turbine.UI.Lotro.Font.TrajanPro14);
-	frame.name:SetForeColor(NAME_COLOR);
+	BazUI.Accent.Bind(frame.name, "SetForeColor", NAME_GOLD);
 	frame.name:SetTextAlignment(Turbine.UI.ContentAlignment.MiddleLeft);
 	frame.name:SetMouseVisible(false);
 
@@ -241,7 +241,7 @@ local function CreateFrame(key)
 	frame.level:SetPosition(WIDTH - PAD - 30, PAD - 2);
 	frame.level:SetSize(30, NAME_H);
 	frame.level:SetFont(Turbine.UI.Lotro.Font.Verdana14);
-	frame.level:SetForeColor(NAME_COLOR);
+	BazUI.Accent.Bind(frame.level, "SetForeColor", NAME_GOLD);
 	frame.level:SetTextAlignment(Turbine.UI.ContentAlignment.MiddleRight);
 	frame.level:SetMouseVisible(false);
 

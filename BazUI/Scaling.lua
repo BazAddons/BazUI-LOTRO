@@ -29,7 +29,25 @@ for _, entry in ipairs(GROUP_ENUMS) do
 	end
 end
 
+local GlobalGroup = Groups ~= nil and Groups.Global or nil;
+
 local warned = false;
+local reportedSetup = false;
+local attached = {}; -- a rescale function per Attach'd window, for SetOverride
+
+-- Every member of the enum and what GetUIGroupScale says for it, so the log
+-- shows which one carries the Options slider.
+local function GroupScales()
+	local found = {};
+	for name, value in pairs(Groups) do
+		if type(value) == "number" then -- not IsA
+			local ok, scale = pcall(Turbine.UI.Display.GetUIGroupScale, value);
+			table.insert(found, tostring(name) .. "=" .. tostring(value) .. " " .. (ok and tostring(scale) or "error"));
+		end
+	end
+	table.sort(found);
+	return #found > 0 and table.concat(found, ", ") or "none";
+end
 
 -- Names in the API that look scaling-related, so the log shows where the
 -- enum really lives if none of the spots above had it.
@@ -63,8 +81,25 @@ local function WindowMethods(window)
 	return #found > 0 and table.concat(found, " ") or "none";
 end
 
+-- The player's /bazui scale number, or nil to follow the game. Needed because
+-- the game doesn't always report the Global scale: on Windows at 4K, Options
+-- at 2.00, GetUIGroupScale answered 1 for Global and nearly every other group
+-- (Radar 1.25), and BazUI drew at half size.
+local function Override()
+	local core = BazUI.Settings.Get("Core");
+	local value = core ~= nil and tonumber(core.UIScale) or nil;
+	return (value ~= nil and value > 0) and value or nil;
+end
+
+local function GameScale()
+	if GlobalGroup == nil or Turbine.UI.Display.GetUIGroupScale == nil then
+		return nil;
+	end
+	return Turbine.UI.Display.GetUIGroupScale(GlobalGroup);
+end
+
 local function GlobalScale()
-	return Turbine.UI.Display.GetUIGroupScale(Groups.Global);
+	return Override() or GameScale();
 end
 
 local function Apply(window, factor)
@@ -109,28 +144,38 @@ end
 function BazUI.Scaling.Attach(window, onScaled, factor)
 	local reapply = function() end;
 	local ok, err = pcall(function()
-		BazUI.Log.Write("scaling: group enum at " .. tostring(groupsPath) ..
-			"; window has " .. WindowMethods(window) ..
-			"; Display.GetUIGroupScale " .. (Turbine.UI.Display.GetUIGroupScale ~= nil and "present" or "missing"));
-
-		if Groups == nil or Turbine.UI.Display.GetUIGroupScale == nil then
-			BazUI.Log.Write("scaling: API names seen: " .. ScalingNames());
-			return; -- leave it to the Plugin Manager's "Use Global Scaling" box
+		if not reportedSetup then
+			reportedSetup = true;
+			local override = Override();
+			BazUI.Log.Write("scaling: group enum at " .. tostring(groupsPath) ..
+				"; window has " .. WindowMethods(window) ..
+				"; game reports Global " .. tostring(GameScale()) ..
+				(override ~= nil and ("; /bazui scale " .. tostring(override) .. " in use") or ""));
+			if GlobalGroup == nil then
+				BazUI.Log.Write("scaling: API names seen: " .. ScalingNames());
+			end
 		end
 
-		if window.SetUIScalingGroup ~= nil then
+		if GlobalGroup ~= nil and window.SetUIScalingGroup ~= nil then
 			-- Turns scaling on for this window even when the plugin isn't using
 			-- Global scaling, and makes UIScaleChanged fire when the player
 			-- moves the Global slider.
-			window:SetUIScalingGroup(Groups.Global);
+			window:SetUIScalingGroup(GlobalGroup);
 		end
 
-		window.UIScaleChanged = function(sender, args)
+		local function Rescale()
 			SafeApply(window, factor);
 			if onScaled ~= nil then
 				pcall(onScaled);
 			end
 		end
+
+		-- With no Global group and no override, this leaves the window to the
+		-- Plugin Manager's "Use Global Scaling" box (Apply does nothing).
+		window.UIScaleChanged = function(sender, args)
+			Rescale();
+		end
+		table.insert(attached, Rescale);
 
 		SafeApply(window, factor);
 		reapply = function() SafeApply(window, factor); end;
@@ -174,6 +219,18 @@ function BazUI.Scaling.Unscale(window)
 	BazUI.Scaling.SetTotal(window, 1);
 end
 
+-- /bazui scale <n>: use n in place of the game's Global scale, for a client
+-- whose API reports the wrong one; nil goes back to following the game.
+-- Re-scales every window at once.
+function BazUI.Scaling.SetOverride(value)
+	BazUI.Settings.Get("Core").UIScale = value or 0;
+	BazUI.Settings.Save();
+	BazUI.Log.Write("scaling: override " .. (value and tostring(value) or "off"));
+	for _, rescale in ipairs(attached) do
+		rescale();
+	end
+end
+
 -- Prints the numbers behind the current scale, for /bazui scale.
 function BazUI.Scaling.Report(window)
 	local function Fmt(fn)
@@ -185,12 +242,16 @@ function BazUI.Scaling.Report(window)
 	end
 
 	local Display = Turbine.UI.Display;
-	local line = "BazUI scale: Global option " ..
-		Fmt(function() return Display.GetUIGroupScale(Groups.Global) end) ..
+	local override = Override();
+	local line = "BazUI scale: Global option " .. Fmt(GameScale) ..
+		", /bazui scale " .. (override and string.format("%.2f", override) or "off") ..
 		", Bags option " ..
 		Fmt(function() return Display.GetUIGroupScale(Groups.InventoryBags) end) ..
 		", bag window " ..
 		Fmt(function() return window:GetScale() end);
 	BazUI.Log.Write(line);
 	Turbine.Shell.WriteLine(line);
+	if Groups ~= nil and Display.GetUIGroupScale ~= nil then
+		BazUI.Log.Write("scaling: groups " .. GroupScales());
+	end
 end

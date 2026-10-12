@@ -12,4 +12,6 @@ BazUI.SkinBuilt = {
 	ActionBars = true,
 	Menu = true,
 	ClassBar = true,
+	ChatOpacity = 54,
+	Accent = "gold",
 };

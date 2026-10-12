@@ -17,10 +17,10 @@ local TAB_CHAR_W = 9;      -- rough TrajanPro14 character width, to size tabs
 local CONTENT_TOP = TABS_TOP + TAB_H + 14;
 local CONTENT_W = WIDTH - 2 * PAD;
 
--- Colors are alpha, r, g, b.
-local TAB_ON_COLOR = Turbine.UI.Color(1, 0.90, 0.78, 0.42);
+-- Colors are alpha, r, g, b; golds are tables, shown through BazUI.Accent.
+local TAB_ON_GOLD = { 1, 0.90, 0.78, 0.42 };
 local TAB_OFF_COLOR = Turbine.UI.Color(1, 0.55, 0.55, 0.53);
-local RULE_COLOR = Turbine.UI.Color(0.5, 0.90, 0.78, 0.42);
+local RULE_GOLD = { 0.5, 0.90, 0.78, 0.42 };
 
 local settings, window, content, underline, managerPanel;
 local tabs = {};   -- { key, title, build, label }
@@ -33,6 +33,12 @@ local function BuildGeneral(form)
 			BazUI.SetModuleEnabled(entry.key, on);
 		end);
 	end
+
+	form:Heading("Look");
+	form:Cycle("Accent colour", BazUI.Accent.CHOICES, BazUI.Accent.Get(), function(name)
+		BazUI.Accent.Set(name);
+	end);
+	form:Note("BazUI's own windows change at once. The game's windows, restyled by the skin, change when it's rebuilt (see the Skin tab).");
 
 	BazUI.Grid.BuildOptions(form);
 
@@ -77,7 +83,12 @@ local function ShowTab(key)
 	settings.Tab = chosen.key;
 
 	for _, tab in ipairs(tabs) do
-		tab.label:SetForeColor(tab == chosen and TAB_ON_COLOR or TAB_OFF_COLOR);
+		if tab == chosen then
+			BazUI.Accent.Bind(tab.label, "SetForeColor", TAB_ON_GOLD);
+		else
+			BazUI.Accent.Unbind(tab.label, "SetForeColor");
+			tab.label:SetForeColor(TAB_OFF_COLOR);
+		end
 	end
 	underline:SetPosition(chosen.label:GetLeft(), TABS_TOP + TAB_H - 2);
 	underline:SetWidth(chosen.label:GetWidth());
@@ -124,12 +135,12 @@ local function CreateTabStrip()
 	rule:SetParent(window);
 	rule:SetPosition(PAD, TABS_TOP + TAB_H);
 	rule:SetSize(CONTENT_W, 1);
-	rule:SetBackColor(RULE_COLOR);
+	BazUI.Accent.Bind(rule, "SetBackColor", RULE_GOLD);
 
 	underline = Turbine.UI.Control();
 	underline:SetParent(window);
 	underline:SetHeight(2);
-	underline:SetBackColor(TAB_ON_COLOR);
+	BazUI.Accent.Bind(underline, "SetBackColor", TAB_ON_GOLD);
 end
 
 local function Create()

@@ -56,6 +56,12 @@ local function Status()
 			end
 		end
 	end
+	if tonumber(built.ChatOpacity) ~= tonumber(BazUI.Settings.Get("Skin").ChatOpacity) then
+		table.insert(changed, "chat tab opacity");
+	end
+	if (built.Accent or "gold") ~= BazUI.Accent.Get() then
+		table.insert(changed, "accent colour");
+	end
 	if #changed == 0 then
 		return "The skin matches these settings.";
 	end
@@ -69,7 +75,7 @@ function Skin.BuildOptions(form)
 	form:Note("These parts of the game's own interface are restyled by the BazUI skin (Options > UI Settings > Current User Skin). Untick one to keep the game's own look for it.");
 
 	-- Sized for the longest status, then set to the real one.
-	local longest = "Changed since the skin was built: toolbar, radar, cast bar, buffs, quest tracker, windows, Action bars module, Menu module, Class bar module. Rebuild it: " .. REBUILD .. ".";
+	local longest = "Changed since the skin was built: toolbar, radar, cast bar, buffs, quest tracker, windows, Action bars module, Menu module, Class bar module, chat tab opacity, accent colour. Rebuild it: " .. REBUILD .. ".";
 	local status;
 
 	form:Heading("Restyled");
@@ -80,6 +86,14 @@ function Skin.BuildOptions(form)
 			status:SetText(Status());
 		end);
 	end
+
+	form:Heading("Chat");
+	form:Note("The chat window's background is the game's own, with its own opacity setting, and follows it at once. Its tabs are skin art and can't: set the same opacity here and rebuild, so the open tab matches the window.");
+	form:Slider("Tab opacity, %", 0, 100, math.floor((tonumber(settings.ChatOpacity) or 45) + 0.5), function(value)
+		settings.ChatOpacity = value;
+		BazUI.Settings.Save(); -- build_skin.py reads the saved file
+		status:SetText(Status());
+	end);
 
 	form:Heading("Hidden while their module is on");
 	form:Note("The game's quickslot bars (Action bars), its menu button art - BazUI draws the menu over the buttons - (Menu), and the Rune-keeper attunement display (Class bar). Switch a module off in General and rebuild the skin to have the game's own back.");

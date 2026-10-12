@@ -19,7 +19,8 @@ Parts with a switch in BazUI's settings (Skin tab):
                 darker under the mouse, a gold accent on the selected one.
   Windows       the game's windows (and chat): BazUI's dark panel and thin
                 gold line in place of the silver bevel and Celtic corners,
-                and a dark gold-edged title plaque.
+                a dark gold-edged title plaque, and text buttons without
+                their blue glow.
 
 Parts that follow a BazUI module - while it's on, the game's own is hidden:
   Action bars   the game's quickslot bars: the docked extra bars and the
@@ -62,10 +63,14 @@ box bigger than the button art just repeats the art.
 Pick "BazUI" in Options > UI Settings > Current User Skin and Accept.
 """
 
+import colorsys
 import glob
 import os
 import re
 import shutil
+import sys
+
+import make_chat_art
 
 # Switches in the Skin tab, in its order: key, and what it does.
 SKIN_PARTS = [
@@ -89,9 +94,21 @@ MODULE_PARTS = [
 MEASURED_AT_SCALE = 0.9
 
 # The toolbar draws this many points right of and below the X and Y its skin
-# gives it (measured from screenshots).
-TOOLBAR_NUDGE_X = 51
-TOOLBAR_NUDGE_Y = 20
+# gives it (measured from screenshots), and it isn't the same everywhere: 51
+# right and 20 below on a Mac under CrossOver (1920x1080 at 0.9); on Windows
+# (3840x2160 at 2.0, 2026-10-12) the buttons came out 622 px left of BazUI's
+# icons with the Mac's numbers, so 229 left. The script runs where the game
+# does, so the platform picks. Only one screen was measured on each: if the
+# menu doesn't open panels somewhere else, build with --show-menu-buttons and
+# measure again.
+TOOLBAR_NUDGE = {"darwin": (51, 20), "win32": (-229, 0)}
+TOOLBAR_NUDGE_X, TOOLBAR_NUDGE_Y = TOOLBAR_NUDGE.get(sys.platform, TOOLBAR_NUDGE["darwin"])
+
+# On Windows the toolbar's own Y doesn't bring it down from the top of the
+# screen (told -31, -18 and 13: drawn at 0 each time), while its buttons'
+# places inside it are kept - so there the buttons are moved down inside it.
+# (Only the top-centre spot has been tried this way.)
+TOOLBAR_TOP_PINNED = sys.platform == "win32"
 
 # Hidden elements go off screen at 1x1, which the game draws as nothing.
 HIDDEN = (-3000, -3000, 1, 1)
@@ -160,6 +177,13 @@ CAST_BAR_ART = {
     "progress_overlay_right": "cast_frame_right",
 }
 BUFF_ART = {"icon_effect_frame": "buff_frame"}
+# The blue glow inside each end of a text button (TextButton_Highlight_l/_r,
+# the store's "buy now" highlight on ~500 buttons; the game spells it
+# "highight"): gone, leaving the button's dark fill and gold line.
+BUTTON_GLOW_ART = {name: "invisible" for name in [
+    "buynow_button_highight_l_small", "buynow_button_highight_small",   # 32x14, most buttons
+    "buynow_button_highight_l", "buynow_button_highight",               # 68x58, the big ones
+]}
 TRACKER_ART = {
     # The strip behind each quest, in its four states - what today's tracker draws.
     **{f"questTrackerWindow_questEntry_{state}_{p}": f"trackerentry_{state}_{p}"
@@ -217,12 +241,43 @@ def window_art():
     return {name: "frame_" + name for name in names}
 
 
-def write_invisible_tga(path, size=32):
-    """A fully transparent 32-bit TGA, for art the skin wants gone."""
+def write_flat_tga(path, rgba=(0, 0, 0, 0), size=32):
+    """A 32-bit TGA of one colour (r, g, b, alpha 0-255): fully transparent by
+    default, for art the skin wants gone."""
+    r, g, b, a = rgba
     header = bytes([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     size & 255, size >> 8, size & 255, size >> 8, 32, 0x28])
     with open(path, "wb") as f:
-        f.write(header + bytes(size * size * 4))
+        f.write(header + bytes([b, g, r, a]) * (size * size))
+
+
+# --show-menu-buttons: the game's menu buttons, normally invisible under
+# BazUI's icons, as see-through magenta - to check they line up.
+MENU_DEBUG = (255, 0, 255, 110)
+
+# The hues the grey accent turns grey, in degrees: BazUI's golds (40-43) and
+# its warm darks - not the radar gems' red dread (to 29) or green hope.
+GOLD_HUES = (28, 58)
+
+
+def grey_gold(path):
+    """Turns the gold in a 32-bit TGA grey of the same brightness, for the
+    grey accent (BazUI's own windows do the same with the Grayscale blend)."""
+    with open(path, "rb") as f:
+        data = bytearray(f.read())
+    if data[2] != 2 or data[16] != 32:
+        return
+    for i in range(18 + data[0], len(data) - 3, 4):
+        b, g, r = data[i], data[i + 1], data[i + 2]
+        hi, lo = max(r, g, b), min(r, g, b)
+        if hi == 0 or (hi - lo) / hi <= 0.1:
+            continue
+        hue = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)[0] * 360
+        if GOLD_HUES[0] <= hue <= GOLD_HUES[1]:
+            v = round(0.299 * r + 0.587 * g + 0.114 * b)
+            data[i:i + 3] = bytes([v, v, v])
+    with open(path, "wb") as f:
+        f.write(data)
 
 
 # MARK: - BazUI's saved settings
@@ -337,31 +392,37 @@ def toolbar(screen_w, scale, toolbar_scale, bazui_menu, spot):
 
     # Allowing for where the game actually draws the toolbar.
     left, top = spot if spot else (round((screen_w - row_w * s) / 2), round(TOP_MARGIN * k))
+    if TOOLBAR_TOP_PINNED:
+        inner = round(top / s)            # the buttons' Y inside the toolbar, in UI units
+        field_y, top = 0, round(inner * s)
+    else:
+        inner, field_y = 0, top - round(TOOLBAR_NUDGE_Y * k)
     on_screen = [(round(left + x * s), top, round(button * s), round(button * s)) for x in offsets]
 
     children = []
     for name, x in zip(shown, offsets):
-        children += element(name, x, 0, button, button, 2)
+        children += element(name, x, inner, button, button, 2)
     for name in names:
         if name in HIDDEN_BUTTONS:
             children += element(name, *HIDDEN, 2)
     pips_x = (row_w - PIPS_W) // 2
     for name in PIP_DISPLAYS:
-        children += element(name, pips_x, button + PIPS_GAP, PIPS_W, PIPS_H, 2)
+        children += element(name, pips_x, inner + button + PIPS_GAP, PIPS_W, PIPS_H, 2)
     for name in TOOLBAR_HIDDEN:
         children += element(name, *HIDDEN, 2)
 
     lines = ["", "\t<!-- Toolbar: menu buttons only. -->", '\t<PanelFile ID="ID_UISkin_Toolbar">',
-             *element("ToolbarField", left - round(TOOLBAR_NUDGE_X * k), top - round(TOOLBAR_NUDGE_Y * k),
-                      row_w, button + PIPS_GAP + PIPS_H, 1, children),
+             *element("ToolbarField", left - round(TOOLBAR_NUDGE_X * k), field_y,
+                      row_w, inner + button + PIPS_GAP + PIPS_H, 1, children),
              "\t</PanelFile>"]
     return lines, on_screen
 
 
-def build(screen_w, screen_h, scale, toolbar_scale, parts, spot=None):
+def build(screen_w, screen_h, scale, toolbar_scale, parts, spot=None, show_buttons=False):
     """The skin XML, and the BazUI menu's buttons on screen (empty when the
     game draws its own menu). `parts` is every key in SKIN_PARTS and
-    MODULE_PARTS -> on/off, already reconciled."""
+    MODULE_PARTS -> on/off, already reconciled. `show_buttons` draws the
+    game's menu buttons magenta instead of invisible."""
     bazui_menu = parts["Toolbar"] and parts["Menu"]
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -407,10 +468,12 @@ def build(screen_w, screen_h, scale, toolbar_scale, parts, spot=None):
         lines += mappings("The quest tracker: dark backing per quest, gold accent.", TRACKER_ART)
     if parts["Windows"]:
         lines += mappings("The game's windows: dark panel, gold line, gold-edged title plaque.", window_art())
+        lines += mappings("Text buttons: no blue glow at the ends.", BUTTON_GLOW_ART)
 
     if bazui_menu:
+        art = "menu_debug" if show_buttons else "invisible"
         lines += mappings("Menu buttons invisible in every state: BazUI draws the menu.",
-                          {f"{name}_{state}": "invisible" for name in MENU_BUTTON_ART for state in MENU_ART_STATES})
+                          {f"{name}_{state}": art for name in MENU_BUTTON_ART for state in MENU_ART_STATES})
 
     lines += ["</opt>", ""]
     return "\n".join(lines), buttons
@@ -436,10 +499,13 @@ BazUI.MenuGeometry = {{
         f.write(lua)
 
 
-def write_built(path, wanted):
-    """What the skin was built from - each switch and module as it was - so
-    BazUI's Skin tab can tell when the settings have moved on."""
+def write_built(path, wanted, chat_opacity, accent):
+    """What the skin was built from - each switch and module as it was, the
+    chat tabs' opacity and the accent - so BazUI's Skin tab can tell when the
+    settings have moved on."""
     rows = "\n".join(f"\t{key} = {'true' if on else 'false'}," for key, on in wanted.items())
+    rows += f"\n\tChatOpacity = {chat_opacity},"
+    rows += f'\n\tAccent = "{accent}",'
     lua = f"""-- Skin/Built.lua
 -- Written by Skin/build_skin.py - don't edit. The settings the BazUI skin
 -- was last built from: the Skin tab's switches and the modules it follows.
@@ -465,6 +531,11 @@ def main():
     parser.add_argument("--on", default="", help="skin parts to build regardless of the settings: " + ",".join(keys))
     parser.add_argument("--off", default="", help="skin parts to leave out regardless of the settings")
     parser.add_argument("--out", help="output folder (default: ui/skins/BazUI)")
+    parser.add_argument("--chat-opacity", type=int,
+                        help="chat tab opacity in percent, to match the game's chat window (default: the Skin tab's)")
+    parser.add_argument("--show-menu-buttons", action="store_true",
+                        help="draw the game's menu buttons see-through magenta, to check they sit under BazUI's icons")
+    parser.add_argument("--accent", choices=["gold", "grey"], help="accent colour (default: the General tab's)")
     args = parser.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -492,6 +563,12 @@ def main():
                 parser.error(f"no skin part called {name} - they're {', '.join(keys)}")
             wanted[name] = on
 
+    chat_opacity = args.chat_opacity
+    if chat_opacity is None:
+        chat_opacity = setting(settings, "Skin", "ChatOpacity", default=make_chat_art.DEFAULT_TAB_OPACITY)
+    chat_opacity = max(0, min(100, round(float(chat_opacity))))
+    accent = args.accent or ("grey" if setting(settings, "Core", "Accent") == "grey" else "gold")
+
     parts = dict(wanted)
     if parts["Toolbar"] and not parts["ActionBars"]:
         parts["Toolbar"] = False
@@ -501,23 +578,32 @@ def main():
     spot = None if args.centre else saved_menu_spot(settings)
     if spot and parts["Toolbar"]:
         print(f"Menu at {spot[0]},{spot[1]} (where it was dragged in BazUI; --centre to ignore)")
-    xml, buttons = build(args.width, args.height, args.scale, args.toolbar_scale, parts, spot)
+    xml, buttons = build(args.width, args.height, args.scale, args.toolbar_scale, parts, spot, args.show_menu_buttons)
 
     os.makedirs(out_dir, exist_ok=True)
     for art in glob.glob(os.path.join(here, "Art", "*.tga")):
         shutil.copy(art, out_dir)
-    write_invisible_tga(os.path.join(out_dir, "invisible.tga"))
+    write_flat_tga(os.path.join(out_dir, "invisible.tga"))
+    write_flat_tga(os.path.join(out_dir, "menu_debug.tga"), MENU_DEBUG)
+    # The chat tabs, over the copies, at the chat window's opacity.
+    for name, pixels in make_chat_art.tab_pieces(chat_opacity).items():
+        make_chat_art.write_tga(os.path.join(out_dir, f"frame_{name}.tga"), pixels)
+    if accent == "grey":
+        for art in glob.glob(os.path.join(out_dir, "*.tga")):
+            grey_gold(art)
     path = os.path.join(out_dir, "SkinDefinition.xml")
     with open(path, "w", encoding="utf-8", newline="\r\n") as f:
         f.write(xml)
 
     geometry = os.path.join(here, "..", "Menu", "Geometry.lua")
     write_geometry(geometry, args.width, args.height, buttons)
-    write_built(os.path.join(here, "Built.lua"), wanted)
+    write_built(os.path.join(here, "Built.lua"), wanted, chat_opacity, accent)
 
     print(f"Wrote {path}: {args.width}x{args.height} game, scale {args.scale}, toolbar {args.toolbar_scale}")
     for key, about in SKIN_PARTS + MODULE_PARTS:
         print(f"  {'on ' if parts[key] else 'off'}  {key:<13} {about}")
+    print(f"  chat tabs at {chat_opacity}% opacity - match the chat window's own setting")
+    print(f"  accent: {accent}")
     print(f"Wrote {os.path.normpath(geometry)}: {len(buttons)} BazUI menu buttons")
     print("Exit and relaunch the game to see it.")
 

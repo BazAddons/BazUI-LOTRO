@@ -8,7 +8,10 @@ BazUI.Settings = {};
 local KEY = "BazUI_Settings";
 
 local defaults = {
-	Core = { Debug = false, Modules = { Bags = true, ActionBars = true, Menu = true, UnitFrames = true, ClassBar = true, XP = true },
+	-- UIScale: 0 follows the game's Global UI scale; a number replaces it
+	-- (/bazui scale <n>). Accent: "gold" or "grey" (BazUI.Accent).
+	Core = { Debug = false, UIScale = 0, Accent = "gold",
+		Modules = { Bags = true, ActionBars = true, Menu = true, UnitFrames = true, ClassBar = true, XP = true },
 		Grid = { Enabled = true, Spacing = 40 } },
 	Bags = { Left = 200, Top = 200, Visible = false, View = "categories", Collapsed = {},
 		Columns = 10, RarityBorder = true, ShowMoney = true, Pins = {} },
@@ -26,8 +29,10 @@ local defaults = {
 		Extra2 = { Shown = false, Left = -1, Top = -1, Columns = 12, Rows = 1, Scale = 1 },
 	} },
 	Options = { Left = -1, Top = -1, Tab = "General" },
-	-- The BazUI skin's parts (Skin tab), read by Skin/build_skin.py.
-	Skin = { Toolbar = true, Radar = true, CastBar = true, Buffs = true, QuestTracker = true, Windows = true },
+	-- The BazUI skin's parts (Skin tab), read by Skin/build_skin.py. ChatOpacity:
+	-- the chat tabs', in percent, to match the chat window's own setting.
+	Skin = { Toolbar = true, Radar = true, CastBar = true, Buffs = true, QuestTracker = true, Windows = true,
+		ChatOpacity = 45 },
 	-- First guesses at what the game's menu buttons open, left to right; the
 	-- Menu tab corrects them.
 	Menu = { AlwaysShow = false, Left = -1, Top = -1, Slots = { "options", "crafting", "social", "character", "quests",

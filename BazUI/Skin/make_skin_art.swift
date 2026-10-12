@@ -252,17 +252,12 @@ basePiece("trackerbase_br", 45, 14, right: true, bottom: true)
 //
 // Each piece: its size, how far in from each outer edge the game's line
 // starts (-1: the piece has no such edge), and how opaque its fill is. The
-// box_im pieces (chat-style windows) are a faint fill with no line, so they
-// get a faint gold line at their very edge.
+// chat-style window's box_im pieces are drawn by make_chat_art.py.
 let framePieces: [(name: String, w: Int, h: Int, top: Int, bottom: Int, left: Int, right: Int, fill: Int)] = [
     ("box_gold_bottom_left_light", 36, 36, -1, 1, 1, -1, 203), ("box_gold_bottom_light", 103, 36, -1, 1, -1, -1, 203),
     ("box_gold_lower_right_light", 36, 36, -1, 1, -1, 1, 203), ("box_gold_side_left_light", 36, 105, -1, -1, 1, -1, 203),
     ("box_gold_side_right_light", 36, 237, -1, -1, -1, 1, 203), ("box_gold_upper_left_light", 36, 36, 1, -1, 1, -1, 203),
     ("box_gold_upper_light", 434, 37, 1, -1, -1, -1, 203), ("box_gold_upper_right_light", 36, 36, 1, -1, -1, 1, 203),
-    ("box_im_bottom", 103, 36, -1, 0, -1, -1, 46), ("box_im_bottom_left_noadorn", 36, 36, -1, 0, 0, -1, 46),
-    ("box_im_right_noadorn", 36, 36, -1, -1, -1, 0, 46), ("box_im_side_left", 36, 105, -1, -1, 0, -1, 46),
-    ("box_im_side_right", 36, 237, -1, -1, -1, 0, 46), ("box_im_upper", 434, 37, 0, -1, -1, -1, 46),
-    ("box_im_upper_left_noadorn", 36, 36, 0, -1, 0, -1, 46), ("box_im_upper_right_noadorn", 36, 36, 0, -1, -1, 0, 46),
     ("box_silver_bottom", 103, 36, -1, 1, -1, -1, 234), ("box_silver_bottom_left", 36, 36, -1, 1, 1, -1, 234),
     ("box_silver_bottom_left_light", 36, 36, -1, 1, 1, -1, 203), ("box_silver_bottom_left_noadorn_min", 36, 36, -1, 2, 2, -1, 233),
     ("box_silver_bottom_light", 103, 36, -1, 1, -1, -1, 203), ("box_silver_bottom_min", 16, 36, -1, 2, -1, -1, 233),
@@ -289,7 +284,6 @@ func rounded(_ r: CGRect, _ radius: CGFloat) -> CGPath {
 // piece doesn't have runs far off it, so edges are straight and only true
 // corners round.
 for p in framePieces {
-    let faint = p.name.hasPrefix("box_im_")
     art("frame_" + p.name, p.w, p.h) { c in
         let w = CGFloat(p.w), h = CGFloat(p.h)
         let x0 = p.left >= 0 ? CGFloat(p.left) : -100
@@ -302,13 +296,11 @@ for p in framePieces {
         c.setFillColor(rgb(10, 8, 6, CGFloat(p.fill) / 255))
         c.fillPath()
         c.setLineWidth(1)
-        if !faint {
-            c.addPath(rounded(outline.insetBy(dx: -0.5, dy: -0.5), cornerRadius + 0.5))
-            c.setStrokeColor(rgb(0, 0, 0, 0.55))
-            c.strokePath()
-        }
+        c.addPath(rounded(outline.insetBy(dx: -0.5, dy: -0.5), cornerRadius + 0.5))
+        c.setStrokeColor(rgb(0, 0, 0, 0.55))
+        c.strokePath()
         c.addPath(rounded(outline.insetBy(dx: 0.5, dy: 0.5), cornerRadius - 0.5))
-        c.setStrokeColor(faint ? rgb(176, 141, 72, 0.35) : gold)
+        c.setStrokeColor(gold)
         c.strokePath()
     }
 }
@@ -321,7 +313,6 @@ func flatBackground(_ name: String, _ w: Int, _ h: Int, _ alpha: Int) {
 }
 flatBackground("base_box_center_silver", 128, 128, 233)
 flatBackground("base_box_center_silver_light", 128, 128, 203)
-flatBackground("box_im_center_silver", 128, 128, 46)
 flatBackground("base_box_center_silver_new", 283, 382, 235)
 flatBackground("base_box_center_silver_gradient", 283, 382, 192)
 flatBackground("base_box_center_silver_gradient_light", 283, 382, 240)
@@ -594,11 +585,11 @@ func tabPath(_ c: CGContext, _ x0: CGFloat, _ x1: CGFloat, _ top: CGFloat, _ bot
     c.addLine(to: CGPoint(x: x1, y: bottom))
 }
 func tab(_ name: String, _ w: Int, _ h: Int, top: CGFloat, bottom: CGFloat, left: CGFloat?, right: CGFloat?,
-         front: Bool, faint: Bool = false) {
+         front: Bool) {
     art("frame_" + name, w, h) { c in
         let x0 = left ?? -100, x1 = right.map { $0 + 1 } ?? CGFloat(w) + 100
-        let fillTop = faint ? rgb(10, 8, 6, front ? 0.5 : 0.28) : front ? rgb(46, 37, 25) : rgb(22, 18, 13, 0.95)
-        let fillBottom = faint ? fillTop : front ? rgb(28, 23, 16) : rgb(16, 13, 10, 0.95)
+        let fillTop = front ? rgb(46, 37, 25) : rgb(22, 18, 13, 0.95)
+        let fillBottom = front ? rgb(28, 23, 16) : rgb(16, 13, 10, 0.95)
         c.saveGState()
         tabPath(c, x0 + 1, x1 - 1, top + 1, bottom + 1)
         c.closePath()
@@ -606,7 +597,7 @@ func tab(_ name: String, _ w: Int, _ h: Int, top: CGFloat, bottom: CGFloat, left
         shade(c, CGRect(x: 0, y: top, width: CGFloat(w), height: bottom - top + 1), fillTop, fillBottom)
         c.restoreGState()
         tabPath(c, x0 + 0.5, x1 - 0.5, top + 0.5, bottom + 1)
-        c.setStrokeColor(faint ? rgb(176, 141, 72, front ? 0.8 : 0.35) : front ? gold : goldDim)
+        c.setStrokeColor(front ? gold : goldDim)
         c.setLineWidth(1)
         c.strokePath()
     }
@@ -621,14 +612,8 @@ for front in [true, false] {
     tab("tab_tier1_middle_\(side)_w_sm", 146, 20, top: small.top, bottom: small.bottom, left: 1, right: 144, front: front)
     tab("tab_tier1_middle_\(side)_n_sm", front ? 130 : 131, 20, top: small.top, bottom: small.bottom, left: nil, right: nil, front: front)
     tab("tab_tier1_middle_\(side)_e_sm", 13, 20, top: small.top, bottom: small.bottom - 1, left: nil, right: 11, front: front)
-    // The chat window's tabs: see-through, like the chat itself.
-    tab("chat_tab_tier1_middle_\(side)_w", 204, 28, top: front ? 1 : 2, bottom: 26, left: front ? nil : 1, right: front ? nil : 202,
-        front: front, faint: true)
-    tab("chat_tab_tier1_middle_\(side)_n", front ? 182 : 183, 28, top: front ? 1 : 2, bottom: 26, left: nil, right: nil,
-        front: front, faint: true)
-    tab("chat_tab_tier1_middle_\(side)_e", 13, 28, top: front ? 4 : 3, bottom: 26, left: nil, right: front ? 10 : 11,
-        front: front, faint: true)
 }
+// The chat window's tabs are drawn by make_chat_art.py.
 
 // Scrollbars, 10 wide: a dark track and a gold thumb (rounded at its ends),
 // gold arrows; brighter under the mouse. The "10H" pieces are the

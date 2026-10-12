@@ -18,8 +18,8 @@ local HEADING_GAP = 12;   -- extra space above a heading that isn't first
 local NOTE_LINE = 16;     -- Verdana14 line height
 local NOTE_CHAR_W = 7.2;  -- rough Verdana14 character width, to size notes
 
--- Colors are alpha, r, g, b.
-local HEADING_COLOR = Turbine.UI.Color(1, 0.90, 0.78, 0.42);
+-- Colors are alpha, r, g, b; golds are tables, shown through BazUI.Accent.
+local HEADING_GOLD = { 1, 0.90, 0.78, 0.42 };
 local TEXT_COLOR = Turbine.UI.Color(1, 0.90, 0.88, 0.82);
 local NOTE_COLOR = Turbine.UI.Color(1, 0.62, 0.62, 0.60);
 
@@ -56,7 +56,8 @@ function Form:Heading(text)
 	if self.y > 0 then
 		self.y = self.y + HEADING_GAP;
 	end
-	self:Place(Label(text, Turbine.UI.Lotro.Font.TrajanPro14, HEADING_COLOR, self.width, 20), 20);
+	local heading = self:Place(Label(text, Turbine.UI.Lotro.Font.TrajanPro14, TEXT_COLOR, self.width, 20), 20);
+	BazUI.Accent.Bind(heading, "SetForeColor", HEADING_GOLD);
 end
 
 function Form:Note(text)

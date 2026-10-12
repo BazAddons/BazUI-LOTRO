@@ -27,10 +27,10 @@ local PAD_LEFT, PAD_RIGHT = 20, 20;   -- room for the Lotro.Window frame
 local PAD_TOP, PAD_BOTTOM = 40, 22;
 local CONTENT_TOP = PAD_TOP + SEARCH_H + 8;   -- below the search box
 
--- Colors are alpha, r, g, b.
+-- Colors are alpha, r, g, b; golds are tables, shown through BazUI.Accent.
 local SLOT_COLOR = Turbine.UI.Color(0.85, 0.10, 0.09, 0.08);
-local HEADER_COLOR = Turbine.UI.Color(1, 0.90, 0.78, 0.42);
-local RULE_COLOR = Turbine.UI.Color(0.5, 0.90, 0.78, 0.42);
+local HEADER_GOLD = { 1, 0.90, 0.78, 0.42 };
+local RULE_GOLD = { 0.5, 0.90, 0.78, 0.42 };
 local HINT_COLOR = Turbine.UI.Color(1, 0.55, 0.55, 0.55);
 local DIM_COLOR = Turbine.UI.Color(0.75, 0, 0, 0);   -- over items search didn't match
 
@@ -241,7 +241,7 @@ local function GetHeader(category)
 		label:SetParent(header);
 		label:SetHeight(HEADER_H - 4);
 		label:SetFont(Turbine.UI.Lotro.Font.TrajanPro14);
-		label:SetForeColor(HEADER_COLOR);
+		BazUI.Accent.Bind(label, "SetForeColor", HEADER_GOLD);
 		label:SetTextAlignment(Turbine.UI.ContentAlignment.MiddleLeft);
 		label:SetMouseVisible(false);
 		header.label = label;
@@ -250,7 +250,7 @@ local function GetHeader(category)
 		rule:SetParent(header);
 		rule:SetPosition(0, HEADER_H - 3);
 		rule:SetHeight(1);
-		rule:SetBackColor(RULE_COLOR);
+		BazUI.Accent.Bind(rule, "SetBackColor", RULE_GOLD);
 		rule:SetMouseVisible(false);
 		header.rule = rule;
 
