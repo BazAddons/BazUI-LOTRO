@@ -9,7 +9,9 @@ build_skin.py maps each frame_<name>.tga onto the game art <name>:
 Measured from the U46.2 pack's pieces: the line runs one pixel in on the
 left, on the last column on the right, along the top row and along the
 bottom row; corners round with a radius of 6; the black shadow inside fades
-over 8 pixels.
+over 8 pixels. Except the top-right corner: every panel puts it in an 8-wide
+slot one pixel right of the right edge's (SkinData.json), so its 9th column
+is cut off and its line has to be on column 7 to meet the edge's.
 
 Python and the standard library only, so it runs anywhere:
 
@@ -31,7 +33,7 @@ QUEST_PANEL = [
     # name            w    h    left right top bottom
     ("top_left",       9,   8,  1,   None, 0,   None),
     ("top_mid",      209,   8,  None, None, 0,   None),
-    ("top_right",      9,   8,  None, 8,   0,   None),
+    ("top_right",      9,   8,  None, 7,   0,   None),    # drawn in an 8-wide slot
     ("left_mid",       9, 363,  1,   None, None, None),
     ("right_mid",      9, 363,  None, 8,   None, None),
     ("bottom_left",    9,   9,  1,   None, None, 8),
